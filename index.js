@@ -1,3 +1,7 @@
+const supabaseUrl = 'https://kyfddcexuvcqpslfyvad.supabase.co/rest/v1/';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5ZmRkY2V4dXZjcXBzbGZ5dmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MTIyNzAsImV4cCI6MjA5Mzk4ODI3MH0.tpkaI_1c1w0gIawh_F9KaUVNOfht7nYI483Rs0hj7OE';
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
 const inventoryEl = document.getElementById('inventory');
 const statsEl = document.getElementById('stats');
 const searchInput = document.getElementById('searchInput');
@@ -15,6 +19,11 @@ const doodles = {
 
 function saveData() {
     localStorage.setItem('homeInventory', JSON.stringify(inventory));
+    for (const item of inventory) {
+        await supabaseClient
+        .from('inventory')
+        .upsert(item);
+    }
 }
 
 
@@ -47,8 +56,8 @@ function renderItems() {
     const search = searchInput.value.toLowerCase();
 
     const filtered = inventory.filter(item =>
-        item.name.toLowerCase().includes(search)
-    );
+        item.name.toLowerCase().includes(search.toLowerCase())
+    ).sort((a, b) => b.id - a.id);
 
     if (filtered.length === 0) {
         inventoryEl.innerHTML = `
@@ -173,4 +182,24 @@ if ('serviceWorker' in navigator) {
 }
 
 
-renderItems();
+async function loadData() {
+    const localData = JSON.parse(localStorage.getItem('homeInventory'));
+
+    if (localData && localData.length > 0) {
+        inventory = localData;
+        renderItems();
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from('inventory')
+        .select('*');
+
+    if (!error && data) {
+        inventory = data;
+        localStorage.setItem('homeInventory', JSON.stringify(data));
+        renderItems();
+    }
+}
+
+loadData();
