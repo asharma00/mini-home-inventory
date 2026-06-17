@@ -8,6 +8,7 @@ const searchInput = document.getElementById('searchInput');
 
 let inventory = JSON.parse(localStorage.getItem('homeInventory')) || [];
 
+
 const doodles = {
     cleaning: 'doodles/cleaning.jpeg',
     medicine: 'doodles/medicine.png',
@@ -17,7 +18,31 @@ const doodles = {
 };
 
 
-function saveData() {
+async function manageInventory() {
+    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+        email: 'anushka.gzb@gmail.com',
+        password: 'Lt#ShMnkC6qrPe-',
+    })
+
+    if (authError) {
+        console.error('Login failed:', authError.message)
+        return
+    }
+
+    console.log('Logged in successfully as:', authData.user.email)
+
+    const { data: inventory, error: fetchError } = await supabaseClient
+        .from('inventory')
+        .select('*')
+
+    if (fetchError)
+        console.error('Error fetching inventory:', fetchError.message)
+    else
+        console.log('Your Inventory Items:', inventory)
+}
+
+
+async function saveData() {
     localStorage.setItem('homeInventory', JSON.stringify(inventory));
     for (const item of inventory) {
         await supabaseClient
@@ -105,7 +130,7 @@ function renderItems() {
 }
 
 
-function addItem() {
+async function addItem() {
     const name = document.getElementById('itemName').value.trim();
     const quantity = parseInt(document.getElementById('itemQty').value);
     const minimum = parseInt(document.getElementById('itemMin').value);
@@ -120,6 +145,7 @@ function addItem() {
         minimum,
         category
     });
+    await saveData();
 
     document.getElementById('itemName').value = '';
     document.getElementById('itemQty').value = '';
@@ -183,6 +209,9 @@ if ('serviceWorker' in navigator) {
 
 
 async function loadData() {
+    const isLoggedIn = await manageInventory();
+    if (!isLoggedIn) return;
+
     const localData = JSON.parse(localStorage.getItem('homeInventory'));
 
     if (localData && localData.length > 0) {
